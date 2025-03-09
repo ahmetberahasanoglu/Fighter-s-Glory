@@ -31,17 +31,25 @@ public class UIManager : MonoBehaviour
     public Ease panelTransitionEase = Ease.OutQuad;
 
     private GameObject currentScreen;
+    private GameObject targetScreen; // Açýlacak yeni ekran
+
+    // Sayfa deðiþimi event'i
+    public delegate void PageChangedHandler(int pageIndex);
+    public event PageChangedHandler pageChanged;
 
     void Start()
     {
         ShowMainMenu();
         UpdateUI();
-        fightButton.onClick.AddListener(() => ShowScreen(fightScreen));
-        gymButton.onClick.AddListener(() => ShowScreen(gymScreen));
-        shopButton.onClick.AddListener(() => ShowScreen(shopScreen));
-        profileButton.onClick.AddListener(() => ShowScreen(profileScreen));
-        achievementsButton.onClick.AddListener(() => ShowScreen(achievementsScreen));
+
+        // Butonlara týklama event'larýný ekle
+        fightButton.onClick.AddListener(() => ShowScreen(fightScreen, 0));
+        gymButton.onClick.AddListener(() => ShowScreen(gymScreen, 1));
+        shopButton.onClick.AddListener(() => ShowScreen(shopScreen, 2));
+        profileButton.onClick.AddListener(() => ShowScreen(profileScreen, 3));
+        achievementsButton.onClick.AddListener(() => ShowScreen(achievementsScreen, 4));
     }
+
     public void AnimateText(TextMeshProUGUI text)
     {
         text.transform.DOScale(1.2f, 0.2f)
@@ -59,20 +67,17 @@ public class UIManager : MonoBehaviour
         ageText.text = age.ToString("F1");
     }
 
-
     public void AddDiamonds(int amount)
     {
         diamonds += amount;
         UpdateUI();
     }
 
-
     public void AddGold(int amount)
     {
         gold += amount;
         UpdateUI();
     }
-
 
     public void IncreaseAge()
     {
@@ -93,39 +98,44 @@ public class UIManager : MonoBehaviour
         }
         IncreaseAge();
     }
+
     public void ShowMainMenu()
     {
-
         SetActiveScreen(mainMenu);
-        AnimateButtons();
     }
 
-    public void ShowScreen(GameObject screen)
+    public void ShowScreen(GameObject screen, int pageIndex)
     {
-        if (currentScreen == screen) return;
+        // Ayný ekrana tekrar týklanýrsa hiçbir þey yapma
+        if (currentScreen == screen)
+            return;
 
-        // Mevcut ekran  kapat
+        // Hedef ekraný kaydet
+        targetScreen = screen;
+
+        // Mevcut ekraný kapat
         if (currentScreen != null)
         {
             CloseScreen(currentScreen);
         }
-
-        // Yeni ekran  a 
-        OpenScreen(screen);
+        else
+        {
+            // Eðer mevcut ekran yoksa, direkt yeni ekraný aç
+            OpenScreen(targetScreen);
+            pageChanged?.Invoke(pageIndex);
+        }
     }
 
     private void OpenScreen(GameObject screen)
     {
         screen.SetActive(true);
 
-
         RectTransform rectTransform = screen.GetComponent<RectTransform>();
         rectTransform.localPosition = new Vector3(2000, 0, 0);
 
-
         rectTransform.DOLocalMoveX(0, panelTransitionDuration)
             .SetEase(panelTransitionEase)
-            .OnComplete(() => Debug.Log(screen.name + " a  ld "));
+            .OnComplete(() => Debug.Log(screen.name + " açýldý"));
 
         currentScreen = screen;
         mainMenu.SetActive(false);
@@ -140,8 +150,26 @@ public class UIManager : MonoBehaviour
             .OnComplete(() =>
             {
                 screen.SetActive(false);
-                Debug.Log(screen.name + " kapand ");
+                Debug.Log(screen.name + " kapandý");
+
+                // Mevcut ekran kapandýktan sonra yeni ekraný aç
+                OpenScreen(targetScreen);
+
+                // Sayfa deðiþimi event'ini tetikle
+                int pageIndex = GetPageIndex(targetScreen);
+                pageChanged?.Invoke(pageIndex);
             });
+    }
+
+    private int GetPageIndex(GameObject screen)
+    {
+        // Ekranýn indeksini döndür
+        if (screen == fightScreen) return 0;
+        if (screen == gymScreen) return 1;
+        if (screen == shopScreen) return 2;
+        if (screen == profileScreen) return 3;
+        if (screen == achievementsScreen) return 4;
+        return -1; // Geçersiz indeks
     }
 
     private void SetActiveScreen(GameObject activeScreen)
@@ -153,21 +181,5 @@ public class UIManager : MonoBehaviour
         achievementsScreen.SetActive(false);
 
         activeScreen.SetActive(true);
-    }
-
-    private void AnimateButtons()
-    {
-        float delay = 0.1f;
-        fightButton.transform.localScale = Vector3.zero;
-        gymButton.transform.localScale = Vector3.zero;
-        shopButton.transform.localScale = Vector3.zero;
-        profileButton.transform.localScale = Vector3.zero;
-        achievementsButton.transform.localScale = Vector3.zero;
-
-        fightButton.transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack).SetDelay(delay * 1);
-        gymButton.transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack).SetDelay(delay * 2);
-        shopButton.transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack).SetDelay(delay * 3);
-        profileButton.transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack).SetDelay(delay * 4);
-        achievementsButton.transform.DOScale(1f, 0.3f).SetEase(Ease.OutBack).SetDelay(delay * 5);
     }
 }
